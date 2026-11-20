@@ -1,0 +1,4 @@
+package com.scenara.backend.auth.service;
+
+public class JwtService {
+}
