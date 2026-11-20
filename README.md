@@ -302,7 +302,7 @@ A documentação dos endpoints será disponibilizada por OpenAPI/Swagger.
 ### Pré-requisitos
 
 - Java 21.
-- Maven.
+- Gradle Wrapper (incluído no projeto; não é necessário instalar o Gradle separadamente).
 - MongoDB.
 - Redis.
 - Docker (opcional).
@@ -331,26 +331,40 @@ Não compartilhe credenciais reais ou arquivos `.env` no repositório.
 ### 3. Executar a aplicação
 
 ```bash
-./mvnw spring-boot:run
+./gradlew bootRun
 ```
 
 No Windows:
 
-```bash
-mvnw.cmd spring-boot:run
+```powershell
+.\gradlew.bat bootRun
 ```
 
 ### 4. Executar testes
 
 ```bash
-./mvnw test
+./gradlew test
+```
+
+No Windows:
+
+```powershell
+.\gradlew.bat test
 ```
 
 ### 5. Gerar build
 
 ```bash
-./mvnw clean package
+./gradlew clean build
 ```
+
+No Windows:
+
+```powershell
+.\gradlew.bat clean build
+```
+
+O comando executa os testes e gera o JAR executável do Spring Boot em `backend/build/libs/`.
 
 ## Boas práticas de desenvolvimento
 
