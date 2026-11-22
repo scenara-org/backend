@@ -21,6 +21,8 @@ public class UserModel {
     private String email;
     private String name;
     private String password;
+
+    private UserRole role;
     private Instant createdAt;
     private Instant updatedAt;
 
