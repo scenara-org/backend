@@ -7,6 +7,7 @@ import com.scenara.backend.projects.model.ProjectStatus;
 public record UpdateProjectRequest(
         @Size(max = 120) @Pattern(regexp = ".*\\S.*", message = "must not be blank") String name,
         @Size(max = 1000) String description,
+        @Size(max = 500) String objective,
         ProjectStatus status
 ) {
 }

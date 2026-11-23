@@ -1,3 +1,6 @@
+# Dependencias locais do Node.js em qualquer subprojeto
+node_modules/
+
 # Configuracoes locais do IntelliJ IDEA
 .idea/
 *.iws
