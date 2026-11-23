@@ -4,17 +4,16 @@ import com.scenara.backend.scenarios.dto.CreateScenarioRequest;
 import com.scenara.backend.scenarios.dto.ScenarioResponse;
 import com.scenara.backend.scenarios.dto.UpdateScenarioRequest;
 import com.scenara.backend.scenarios.mapper.ScenarioMapper;
-import com.scenara.backend.scenarios.model.FinancialAssumptions;
+import com.scenara.backend.projects.service.ProjectAccessService;
 import com.scenara.backend.scenarios.model.ScenarioModel;
 import com.scenara.backend.scenarios.repository.ScenarioRepository;
+import com.scenara.backend.simulations.repository.SimulationRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,43 +22,62 @@ public class ScenarioService {
 
     private final ScenarioRepository repository;
     private final ScenarioMapper scenarioMapper;
+    private final ProjectAccessService projectAccessService;
+    private final SimulationRepository simulationRepository;
 
-    public ScenarioResponse criar(String projectId, CreateScenarioRequest request) {
+    public ScenarioResponse criar(String projectId, String userId, CreateScenarioRequest request) {
+        projectAccessService.requireOwner(projectId, userId);
+
         ScenarioModel scenarioModel = new ScenarioModel();
-        FinancialAssumptions assumptions = new FinancialAssumptions();
+        Instant now = Instant.now();
 
         scenarioModel.setProjectId(projectId);
         scenarioModel.setName(request.name());
         scenarioModel.setDescription(request.description());
         scenarioModel.setAssumptions(scenarioMapper.toModel(request.assumptions()));
+        scenarioModel.setVersion(1);
+        scenarioModel.setCreatedAt(now);
+        scenarioModel.setUpdatedAt(now);
 
         return scenarioMapper.toResponse(repository.save(scenarioModel));
     }
 
-    public ScenarioResponse exibir(String id, String projectId) {
+    public ScenarioResponse exibir(String id, String projectId, String userId) {
+        projectAccessService.requireOwner(projectId, userId);
         return scenarioMapper.toResponse(buscar(id, projectId));
     }
 
-    public List<ScenarioResponse> exibirTodos(String projectId) {
+    public List<ScenarioResponse> exibirTodos(String projectId, String userId) {
+        projectAccessService.requireOwner(projectId, userId);
         return repository.findAllByProjectId(projectId).stream()
                 .map(scenarioMapper::toResponse)
                 .toList();
     }
 
-    public ScenarioResponse atualizar(String id, String projectId, UpdateScenarioRequest request) {
+    public ScenarioResponse atualizar(String id, String projectId, String userId, UpdateScenarioRequest request) {
+        projectAccessService.requireOwner(projectId, userId);
         ScenarioModel scenario = buscar(id, projectId);
 
+        // Premissas diferentes geram uma nova versão; simulações antigas guardam a versão que usaram.
+        boolean assumptionsChanged = request.assumptions() != null
+                && !request.assumptions().equals(scenarioMapper.toDto(scenario.getAssumptions()));
+
         scenarioMapper.update(request, scenario);
+        if (assumptionsChanged) {
+            scenario.setVersion(scenario.getVersion() + 1);
+        }
         scenario.setUpdatedAt(Instant.now());
 
-        return scenarioMapper.toResponse(scenario);
+        return scenarioMapper.toResponse(repository.save(scenario));
     }
 
-    public void deletar(String id, String projectId) {
+    public void deletar(String id, String projectId, String userId) {
+        projectAccessService.requireOwner(projectId, userId);
         if (!repository.existsByIdAndProjectId(id, projectId)) {
             throw naoEncontrado();
         }
 
+        simulationRepository.deleteAllByProjectIdAndScenarioId(projectId, id);
         repository.deleteByIdAndProjectId(id, projectId);
     }
 

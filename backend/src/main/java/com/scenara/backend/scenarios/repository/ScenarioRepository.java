@@ -17,4 +17,6 @@ public interface ScenarioRepository extends MongoRepository<ScenarioModel, Strin
     List<ScenarioModel> findAllByProjectId(String projectId);
 
     boolean existsByIdAndProjectId(String id, String projectId);
+
+    void deleteAllByProjectId(String projectId);
 }

@@ -7,6 +7,8 @@ import com.scenara.backend.projects.mapper.ProjectMapper;
 import com.scenara.backend.projects.model.ProjectModel;
 import com.scenara.backend.projects.model.ProjectStatus;
 import com.scenara.backend.projects.repository.ProjectRepository;
+import com.scenara.backend.scenarios.repository.ScenarioRepository;
+import com.scenara.backend.simulations.repository.SimulationRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ public class ProjectService {
 
     private final ProjectRepository repository;
     private final ProjectMapper mapper;
+    private final ScenarioRepository scenarioRepository;
+    private final SimulationRepository simulationRepository;
 
     public ProjectResponse criar(String userId, CreateProjectRequest request) {
         ProjectModel project = new ProjectModel();
@@ -29,6 +33,7 @@ public class ProjectService {
         project.setUserId(userId);
         project.setName(request.name());
         project.setDescription(request.description());
+        project.setObjective(request.objective());
         project.setStatus(ProjectStatus.ACTIVE);
         project.setCreatedAt(now);
         project.setUpdatedAt(now);
@@ -60,6 +65,9 @@ public class ProjectService {
         if (!repository.existsByIdAndUserId(id, userId)) {
             throw naoEncontrado();
         }
+        // Remove também o que pertence ao projeto, para não deixar cenários e simulações órfãos.
+        simulationRepository.deleteAllByProjectId(id);
+        scenarioRepository.deleteAllByProjectId(id);
         repository.deleteByIdAndUserId(id, userId);
     }
 

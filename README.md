@@ -324,7 +324,13 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 
 JWT_SECRET=replace-with-a-secure-secret
+JWT_EXPIRATION=86400000
+
+# Origens do frontend autorizadas via CORS (separadas por vírgula)
+CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
+
+Todos os endpoints ficam sob o prefixo `/api` (ex.: `http://localhost:8080/api/auth/login`).
 
 Não compartilhe credenciais reais ou arquivos `.env` no repositório.
 

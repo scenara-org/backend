@@ -7,6 +7,7 @@ public record ProjectResponse(
         String id,
         String name,
         String description,
+        String objective,
         ProjectStatus status,
         Instant createdAt,
         Instant updatedAt

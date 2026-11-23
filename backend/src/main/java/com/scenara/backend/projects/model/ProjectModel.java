@@ -19,6 +19,7 @@ public class ProjectModel {
 
     private String name;
     private String description;
+    private String objective;
     private ProjectStatus status;
     private Instant createdAt;
     private Instant updatedAt;
