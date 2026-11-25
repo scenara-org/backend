@@ -28,6 +28,7 @@ public class SimulationService {
     private final SimulationMapper mapper;
     private final ProjectAccessService projectAccessService;
     private final FinancialProjectionCalculator calculator;
+    private final SimulationQueryService queryService;
 
     public SimulationResponse executar(String projectId, String scenarioId, String userId) {
         projectAccessService.requireOwner(projectId, userId);
@@ -50,14 +51,14 @@ public class SimulationService {
         simulation.setMonthlyProjections(projection.monthlyProjections());
         simulation.setExecutedAt(Instant.now());
 
-        return mapper.toResponse(simulationRepository.save(simulation));
+        SimulationResponse response = mapper.toResponse(simulationRepository.save(simulation));
+        queryService.invalidarListagens(projectId, scenarioId);
+        return response;
     }
 
     public SimulationResponse exibir(String projectId, String id, String userId) {
         projectAccessService.requireOwner(projectId, userId);
-        return simulationRepository.findByIdAndProjectId(id, projectId)
-                .map(mapper::toResponse)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Simulação não encontrada."));
+        return queryService.buscar(projectId, id);
     }
 
     public List<SimulationSummaryResponse> listarPorCenario(String projectId, String scenarioId, String userId) {
@@ -65,17 +66,11 @@ public class SimulationService {
         if (!scenarioRepository.existsByIdAndProjectId(scenarioId, projectId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cenário não encontrado.");
         }
-        return simulationRepository.findSummariesByProjectIdAndScenarioId(projectId, scenarioId)
-                .stream()
-                .map(mapper::toSummary)
-                .toList();
+        return queryService.resumosPorCenario(projectId, scenarioId);
     }
 
     public List<SimulationSummaryResponse> listarPorProjeto(String projectId, String userId) {
         projectAccessService.requireOwner(projectId, userId);
-        return simulationRepository.findSummariesByProjectId(projectId)
-                .stream()
-                .map(mapper::toSummary)
-                .toList();
+        return queryService.resumosPorProjeto(projectId);
     }
 }

@@ -8,6 +8,7 @@ import com.scenara.backend.users.dto.CreateUserResponse;
 import com.scenara.backend.users.model.UserModel;
 import com.scenara.backend.users.model.UserRole;
 import com.scenara.backend.users.repository.UserRepository;
+import io.jsonwebtoken.JwtException;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,17 +26,38 @@ public class AuthService {
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
     private final UserMapper mapper;
+    private final SessionService sessionService;
+    private final LoginAttemptService loginAttemptService;
 
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String ip) {
+        loginAttemptService.verificarBloqueio(request.email(), ip);
+
         UserModel user = repository.findByEmail(request.email())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos."));
+                .filter(found -> encoder.matches(request.password(), found.getPassword()))
+                .orElse(null);
 
-        if (!encoder.matches(request.password(), user.getPassword())) {
+        // E-mail inexistente e senha errada contam igual, para o limite não revelar quais e-mails existem.
+        if (user == null) {
+            loginAttemptService.registrarFalha(request.email(), ip);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
         }
 
-        return new LoginResponse(jwtService.generateToken(user));
+        loginAttemptService.registrarSucesso(request.email());
 
+        String sessionId = sessionService.criar(user.getId());
+        return new LoginResponse(jwtService.generateToken(user, sessionId));
+    }
+
+    /** Encerra a sessão do token informado. É idempotente: token inválido ou já revogado não gera erro. */
+    public void logout(String token) {
+        try {
+            String sessionId = jwtService.parseClaims(token).getId();
+            if (sessionId != null) {
+                sessionService.revogar(sessionId);
+            }
+        } catch (JwtException | IllegalArgumentException ignored) {
+            // nada a encerrar
+        }
     }
 
 

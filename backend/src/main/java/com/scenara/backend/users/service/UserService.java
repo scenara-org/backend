@@ -1,11 +1,16 @@
 package com.scenara.backend.users.service;
 
+import com.scenara.backend.auth.service.SessionService;
+import com.scenara.backend.shared.cache.CacheNames;
 import com.scenara.backend.users.Mapper.UserMapper;
 import com.scenara.backend.users.dto.CreateUserResponse;
 import com.scenara.backend.users.dto.UpdateUserRequest;
 import com.scenara.backend.users.model.UserModel;
 import com.scenara.backend.users.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,11 +23,14 @@ public class UserService {
 
     private final UserRepository repository;
     private final UserMapper mapper;
+    private final SessionService sessionService;
 
+    @Cacheable(cacheNames = CacheNames.USER, key = "#id")
     public CreateUserResponse exibir(String id) {
         return mapper.toResponse(buscar(id));
     }
 
+    @CachePut(cacheNames = CacheNames.USER, key = "#id")
     public CreateUserResponse atualizar(String id, UpdateUserRequest updateRequest) {
         UserModel user = buscar(id);
 
@@ -37,8 +45,10 @@ public class UserService {
         return mapper.toResponse(repository.save(user));
     }
 
+    @CacheEvict(cacheNames = CacheNames.USER, key = "#id")
     public void deletar(String id) {
         repository.delete(buscar(id));
+        sessionService.revogarTodas(id);
     }
 
     public UserModel buscar(String id) {

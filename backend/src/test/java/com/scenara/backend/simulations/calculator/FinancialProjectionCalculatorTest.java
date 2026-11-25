@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FinancialProjectionCalculatorTest {
 
@@ -98,5 +99,46 @@ class FinancialProjectionCalculatorTest {
 
         // Custo variável 300 * 15/30 dias = 150
         assertEquals(0, new BigDecimal("150").compareTo(month.getInventory()));
+    }
+
+    /**
+     * Regressão: com crescimento composto em horizonte longo os valores acumulavam casas decimais
+     * e o Mongo recusava salvar ("Conversion to Decimal128 would require inexact rounding").
+     */
+    @Test
+    void longCompoundGrowthStaysWithinDecimal128AndInCents() {
+        FinancialAssumptions a = simpleAssumptions();
+        a.setProductRevenueGrowth(new BigDecimal("0.005"));
+        a.setServiceRevenueGrowth(new BigDecimal("0.0123456789123"));
+        a.setInitialServiceRevenue(new BigDecimal("333.333"));
+        a.setFixedCostGrowthRate(new BigDecimal("0.0037"));
+        a.setVariableCostRate(new BigDecimal("0.333"));
+        a.setEffectiveTaxRate(new BigDecimal("0.34"));
+        a.setDepreciableAssetValue(new BigDecimal("30000"));
+        a.setUsefulLifeMonths(7);
+        a.setDaysSalesOutstanding(31);
+        a.setDaysPayableOutstanding(17);
+        a.setDaysInventoryOutstanding(13);
+        a.setCapexRate(new BigDecimal("0.0275"));
+        a.setProjectionMonths(600);
+
+        FinancialProjectionResult result = calculator.calculate(a);
+
+        for (MonthlyProjection m : result.monthlyProjections()) {
+            for (BigDecimal value : List.of(m.getProductRevenue(), m.getServiceRevenue(), m.getTotalRevenue(),
+                    m.getVariableCost(), m.getFixedCost(), m.getEbitda(), m.getDepreciation(), m.getIncomeTax(),
+                    m.getNetIncome(), m.getAccountsReceivable(), m.getInventory(), m.getAccountsPayable(),
+                    m.getWorkingCapital(), m.getCapex(), m.getFreeCashFlow(), m.getAccumulatedCashFlow())) {
+                assertTrue(value.scale() <= 2, "valor monetário fora de centavos: " + value);
+                assertTrue(value.precision() <= 34, "valor não cabe em Decimal128: " + value);
+            }
+            assertTrue(m.getEbitdaMargin().precision() <= 34);
+            // As linhas fecham: receita total = soma das receitas exibidas.
+            assertEquals(0, m.getTotalRevenue().compareTo(
+                    m.getProductRevenue().add(m.getServiceRevenue()).add(m.getOtherRevenue())));
+        }
+        assertTrue(result.results().getTotalRevenue().precision() <= 34);
+        // Crescimento composto preservado: 1000 * 1.005^599, arredondado em centavos.
+        assertEquals(0, new BigDecimal("19836.77").compareTo(result.monthlyProjections().getLast().getProductRevenue()));
     }
 }
