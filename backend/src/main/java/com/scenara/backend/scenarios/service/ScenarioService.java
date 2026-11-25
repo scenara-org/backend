@@ -8,6 +8,7 @@ import com.scenara.backend.projects.service.ProjectAccessService;
 import com.scenara.backend.scenarios.model.ScenarioModel;
 import com.scenara.backend.scenarios.repository.ScenarioRepository;
 import com.scenara.backend.simulations.repository.SimulationRepository;
+import com.scenara.backend.simulations.service.SimulationQueryService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class ScenarioService {
     private final ScenarioMapper scenarioMapper;
     private final ProjectAccessService projectAccessService;
     private final SimulationRepository simulationRepository;
+    private final SimulationQueryService simulationQueryService;
 
     public ScenarioResponse criar(String projectId, String userId, CreateScenarioRequest request) {
         projectAccessService.requireOwner(projectId, userId);
@@ -79,6 +81,7 @@ public class ScenarioService {
 
         simulationRepository.deleteAllByProjectIdAndScenarioId(projectId, id);
         repository.deleteByIdAndProjectId(id, projectId);
+        simulationQueryService.invalidarCenario(projectId, id);
     }
 
     public ScenarioModel buscar(String id, String projectId) {

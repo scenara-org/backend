@@ -25,6 +25,7 @@ public class ProjectService {
     private final ProjectMapper mapper;
     private final ScenarioRepository scenarioRepository;
     private final SimulationRepository simulationRepository;
+    private final ProjectAccessService projectAccessService;
 
     public ProjectResponse criar(String userId, CreateProjectRequest request) {
         ProjectModel project = new ProjectModel();
@@ -69,6 +70,7 @@ public class ProjectService {
         simulationRepository.deleteAllByProjectId(id);
         scenarioRepository.deleteAllByProjectId(id);
         repository.deleteByIdAndUserId(id, userId);
+        projectAccessService.invalidar(id);
     }
 
     private ProjectModel buscar(String id, String userId) {
